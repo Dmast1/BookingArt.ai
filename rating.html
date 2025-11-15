@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Оценка Instagram профиля</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Unbounded:wght@400;600&display=swap');
+
+    body {
+      margin: 0;
+      font-family: 'Unbounded', sans-serif;
+      background: radial-gradient(circle at center, #20002c, #cbb4d4);
+      color: #fff;
+      overflow-x: hidden;
+      position: relative;
+    }
+
+    .bg {
+      position: fixed;
+      width: 100%;
+      height: 100%;
+      z-index: -1;
+      overflow: hidden;
+      top: 0;
+      left: 0;
+    }
+
+    .particle {
+      position: absolute;
+      border-radius: 50%;
+      background: radial-gradient(circle, #ff00cc, #3333ff);
+      opacity: 0.6;
+      animation: float 10s infinite ease-in-out alternate;
+    }
+
+    @keyframes float {
+      0% { transform: translateY(0) translateX(0) scale(0.7); opacity: 0.2; }
+      50% { transform: translateY(-80px) translateX(40px) scale(1.4); opacity: 1; }
+      100% { transform: translateY(0) translateX(0) scale(0.7); opacity: 0.2; }
+    }
+
+    .wrapper {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 24px;
+      margin: 60px auto;
+      max-width: 1100px;
+      padding: 0 20px;
+    }
+
+    .form-container, .leaderboard-container {
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.2);
+      border-radius: 16px;
+      backdrop-filter: blur(16px);
+      padding: 24px;
+      flex: 1 1 450px;
+      box-shadow: 0 0 30px rgba(255, 0, 200, 0.3);
+      position: relative;
+    }
+
+    h2, h3 {
+      margin-top: 0;
+      font-weight: 600;
+      color: #fff;
+      text-shadow: 0 0 14px rgba(255, 255, 255, 0.6);
+    }
+
+    input, select, button {
+      width: 100%;
+      padding: 12px 16px;
+      margin: 8px 0;
+      border-radius: 10px;
+      border: none;
+      background: rgba(255,255,255,0.15);
+      color: #fff;
+      font-size: 15px;
+      font-family: 'Unbounded', sans-serif;
+      transition: background .3s ease;
+    }
+
+    select {
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg fill='white' height='24' viewBox='0 0 24 24' width='24' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M7 10l5 5 5-5z'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 10px center;
+      background-size: 18px;
+    }
+
+    button {
+      background: linear-gradient(135deg, #ff66cc, #6600ff);
+      font-weight: 600;
+      color: #fff;
+      margin-top: 12px;
+      cursor: pointer;
+      box-shadow: 0 0 12px rgba(255,0,150,0.4);
+    }
+
+    button:hover {
+      filter: brightness(1.1);
+    }
+
+    .score-box {
+      background: #1e1f29;
+      padding: 14px;
+      border-radius: 12px;
+      font-size: 18px;
+      font-weight: bold;
+      text-align: center;
+      margin-top: 12px;
+      box-shadow: inset 0 0 8px rgba(255,0,150,0.2);
+      color: #fff;
+    }
+
+    table {
+      width: 100%;
+      margin-top: 14px;
+      background: rgba(255,255,255,0.1);
+      border-radius: 10px;
+      padding: 10px;
+      border-spacing: 0;
+      color: #fff;
+    }
+
+    th, td {
+      padding: 10px;
+      text-align: left;
+      font-size: 15px;
+    }
+
+    th {
+      color: #ff66cc;
+    }
+
+    @media (max-width: 768px) {
+      .wrapper {
+        flex-direction: column;
+        align-items: stretch;
+      }
+    }
+  </style>
+</head>
+<body>
+
+<div class="bg" id="particles-bg"></div>
+
+<div class="wrapper">
+  <div class="form-container">
+    <h2>Оценка Instagram профиля</h2>
+    <input id="nickname" placeholder="Введите ник / юзернейм">
+
+    <label>Аватар</label>
+    <select id="avatar"></select>
+
+    <label>Ник</label>
+    <select id="nick"></select>
+
+    <label>Биография</label>
+    <select id="bio"></select>
+
+    <label>Актуальные сторис</label>
+    <select id="highlights"></select>
+
+    <label>Посты / Лента</label>
+    <select id="posts"></select>
+
+    <div class="score-box" id="totalScore">Общий балл: 0.0</div>
+    <button onclick="addToTop()">Добавить в Топ</button>
+  </div>
+
+  <div class="leaderboard-container">
+    <h3>Топ участников</h3>
+    <table id="leaderboard">
+      <tr><th>#</th><th>Ник</th><th>Баллы</th></tr>
+    </table>
+  </div>
+</div>
+
+<script>
+  for(let i=0; i<100; i++){
+    const p = document.createElement("div");
+    p.className = "particle";
+    const size = Math.random() * 6 + 4;
+    p.style.width = size + "px";
+    p.style.height = size + "px";
+    p.style.top = Math.random()*100 + "vh";
+    p.style.left = Math.random()*100 + "vw";
+    p.style.animationDuration = (4 + Math.random()*6) + "s";
+    document.getElementById("particles-bg").appendChild(p);
+  }
+
+  const selectFields = ["avatar", "bio", "highlights", "posts", "nick"];
+  selectFields.forEach(id => {
+    const el = document.getElementById(id);
+    for (let i = 0; i <= 10; i++) {
+      const option = document.createElement("option");
+      option.value = i;
+      option.text = i;
+      el.appendChild(option);
+    }
+  });
+
+  const leaderboardData = [];
+
+  function calcScore() {
+    const vals = selectFields.map(id => Number(document.getElementById(id).value));
+    const avg = vals.reduce((a, b) => a + b, 0) / vals.length;
+    document.getElementById("totalScore").innerText = "Общий балл: " + avg.toFixed(2);
+    return avg;
+  }
+
+  selectFields.forEach(id => {
+    document.getElementById(id).addEventListener("change", calcScore);
+  });
+
+  function addToTop() {
+    const nick = document.getElementById("nickname").value.trim();
+    if (!nick) return alert("Введите ник");
+
+    const score = calcScore();
+    leaderboardData.push({ nick, score: Number(score.toFixed(2)) });
+
+    leaderboardData.sort((a, b) => {
+      if (b.score !== a.score) return b.score - a.score;
+      return a.nick.localeCompare(b.nick);
+    });
+
+    renderLeaderboard();
+    document.getElementById("nickname").value = "";
+    selectFields.forEach(id => document.getElementById(id).value = 0);
+    calcScore();
+  }
+
+  function renderLeaderboard() {
+    const table = document.getElementById("leaderboard");
+    table.innerHTML = "<tr><th>#</th><th>Ник</th><th>Баллы</th></tr>";
+    leaderboardData.forEach((entry, index) => {
+      const row = table.insertRow();
+      row.insertCell(0).innerText = index + 1;
+      row.insertCell(1).innerText = entry.nick;
+      row.insertCell(2).innerText = entry.score.toFixed(2);
+    });
+  }
+</script>
+
+</body>
+</html>

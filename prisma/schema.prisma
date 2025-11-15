@@ -1,0 +1,580 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DATABASE_URL_UNPOOLED")
+}
+
+/**
+ * =========================
+ * Enums
+ * =========================
+ */
+
+enum Role {
+  GUEST
+  USER
+  PROVIDER
+  ADMIN
+}
+
+enum LeadSource {
+  venue
+  provider
+  unknown
+}
+
+enum LeadStatus {
+  new
+  contacted
+  converted
+  rejected
+}
+
+enum BusinessType {
+  PF
+  COMPANY
+}
+
+enum KycStatus {
+  pending
+  approved
+  rejected
+}
+
+enum DocumentKind {
+  IDENTITY // паспорт/ID
+  COMPANY // устав/регистрация/сертификаты
+  OTHER
+}
+
+/**
+ * =========================
+ * Core
+ * =========================
+ */
+
+model User {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  email         String?   @unique
+  emailVerified DateTime?
+  phone         String?   @unique
+  phoneVerified DateTime?
+  name          String?
+  role          Role      @default(USER)
+
+  // логин/пароль
+  passwordHash String?
+
+  premiumUntil DateTime?
+
+  // профиль
+  avatarUrl String?
+  city      String?
+  country   String?
+  birthDate DateTime?
+  bio       String?
+  language  String?
+
+  // связи
+  provider Provider?
+  bookings Booking[] @relation("UserBookings")
+
+  // чат
+  conversationsAsUserOne Conversation[] @relation("UserOneConversations")
+  conversationsAsUserTwo Conversation[] @relation("UserTwoConversations")
+  messages               Message[]
+
+  // email verification tokens
+  verificationTokens VerificationToken[]
+
+  // venues, которыми владеет пользователь
+  ownedVenues Venue[] @relation("VenueOwner")
+}
+
+model Provider {
+  id     String @id @default(uuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id])
+
+  // теперь опционально, чтобы миграция прошла
+  slug        String? @unique
+  displayName String
+  firstName   String? // PF: nume
+  lastName    String? // PF: prenume
+  city        String?
+  country     String?
+
+  // профиль
+  categories String[] @default([])
+  bio        String?
+  avatarUrl  String?
+
+  // ссылки
+  youtubeUrl   String?
+  instagramUrl String?
+  facebookUrl  String?
+  websiteUrl   String?
+
+  // контроль и реквизиты
+  verified     Boolean      @default(false)
+  businessType BusinessType @default(PF)
+  companyName  String?
+  regNo        String?
+  vatId        String?
+  iban         String?
+  phone        String?
+
+  // KYC / доп. данные
+  kycStatus KycStatus @default(pending)
+  kycNote   String?
+  meta      Json? // произвольные анкеты/настройки (PF/Companie)
+
+  // "топ"/выделение на сайте
+  isFeatured    Boolean   @default(false)
+  featuredUntil DateTime?
+
+  // связи
+  calendars Availability[]
+  bookings  Booking[]          @relation("ProviderBookings")
+  events    Event[]
+  packages  ProviderPackage[]
+  leads     Lead[]
+  documents ProviderDocument[] // загруженные документы (паспорт/компания/прочее)
+
+  // НОВОЕ: активности провайдера
+  activities Activity[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ProviderDocument {
+  id         String   @id @default(cuid())
+  createdAt  DateTime @default(now())
+  providerId String
+  provider   Provider @relation(fields: [providerId], references: [id])
+
+  kind      DocumentKind
+  url       String
+  filename  String?
+  mimeType  String?
+  sizeBytes Int?
+  note      String?
+  status    KycStatus    @default(pending)
+
+  @@index([providerId, kind, status])
+}
+
+model ProviderPackage {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  providerId String
+  provider   Provider @relation(fields: [providerId], references: [id])
+
+  title       String
+  description String?
+  price       Int
+  currency    String  @default("EUR")
+  isPublic    Boolean @default(true)
+  sortOrder   Int     @default(0)
+
+  // новые поля для пакета
+  imageUrl      String?
+  tag           String?
+  durationHours Int?
+  maxPeople     Int?
+  isHighlight   Boolean @default(false)
+
+  @@index([providerId, sortOrder])
+}
+
+model Availability {
+  id         String   @id @default(cuid())
+  providerId String
+  date       DateTime
+  status     String
+  note       String?
+
+  provider Provider @relation(fields: [providerId], references: [id])
+
+  @@unique([providerId, date])
+  @@index([providerId, date])
+}
+
+model Venue {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  /// кто создал / владеет этой локацией
+  ownerId String?
+  owner   User?   @relation("VenueOwner", fields: [ownerId], references: [id])
+
+  /// базовая инфа
+  name      String
+  venueType String? // hall, hotel, outdoor, restaurant…
+
+  city    String
+  country String? @default("RO")
+  address String? // точный адрес (улица, nr, etc.)
+
+  /// вместимость и ценник
+  capacityMin Int?
+  capacityMax Int?
+  priceFrom   Int?
+  priceTo     Int?
+  currency    String @default("EUR")
+  rating      Float?
+
+  /// контакты и детали
+  website      String?
+  contactEmail String?
+  contactPhone String?
+  notes        String? // короткое описание / внутренние заметки
+
+  /// медиа и фичи
+  images   String[]
+  features String[]
+
+  /// связи
+  leads  Lead[]
+  events Event[]
+
+  @@index([city, country])
+  @@index([rating, createdAt])
+  @@index([ownerId])
+}
+
+model Lead {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  source LeadSource @default(unknown)
+  status LeadStatus @default(new)
+
+  venueId String?
+  venue   Venue?  @relation(fields: [venueId], references: [id])
+
+  providerId String?
+  provider   Provider? @relation(fields: [providerId], references: [id])
+
+  email String
+  city  String?
+  time  String?
+  date  DateTime?
+
+  @@index([source, createdAt])
+  @@index([status, createdAt])
+}
+
+model Booking {
+  id         String   @id @default(cuid())
+  createdAt  DateTime @default(now())
+  date       DateTime
+  city       String?
+  status     String   @default("pending")
+  priceGross Int?
+  fee        Int?
+
+  userId     String
+  providerId String
+
+  user     User     @relation("UserBookings", fields: [userId], references: [id])
+  provider Provider @relation("ProviderBookings", fields: [providerId], references: [id])
+
+  conversations Conversation[]
+
+  @@index([providerId, date])
+}
+
+/**
+ * =========================
+ * Event (Bilete)
+ * =========================
+ */
+
+model Event {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now())
+
+  slug  String   @unique
+  title String
+  city  String
+  date  DateTime
+  image String?
+
+  priceFrom  Int?
+  currency   String?
+  status     String?
+  ticketsUrl String?
+
+  venueId    String?
+  providerId String?
+
+  venue    Venue?    @relation(fields: [venueId], references: [id])
+  provider Provider? @relation(fields: [providerId], references: [id])
+
+  ticketTypes  TicketType[]
+  ticketOrders TicketOrder[]
+
+  // фичим ивенты на главной / витрине
+  isFeatured    Boolean   @default(false)
+  featuredUntil DateTime?
+
+  @@index([date])
+  @@index([city, date])
+}
+
+model Conversation {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now())
+
+  userOneId String
+  userTwoId String
+
+  bookingId String?
+  booking   Booking? @relation(fields: [bookingId], references: [id])
+
+  userOne  User      @relation("UserOneConversations", fields: [userOneId], references: [id])
+  userTwo  User      @relation("UserTwoConversations", fields: [userTwoId], references: [id])
+  messages Message[]
+
+  @@index([userOneId])
+  @@index([userTwoId])
+  @@index([bookingId])
+  @@index([updatedAt])
+}
+
+model Message {
+  id             String   @id @default(cuid())
+  createdAt      DateTime @default(now())
+  conversationId String
+  senderId       String
+  text           String
+
+  conversation Conversation @relation(fields: [conversationId], references: [id])
+  sender       User         @relation(fields: [senderId], references: [id])
+
+  @@index([conversationId, createdAt])
+}
+
+model TicketType {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now())
+
+  eventId  String
+  name     String
+  price    Int
+  currency String
+  total    Int
+  sold     Int    @default(0)
+
+  event      Event             @relation(fields: [eventId], references: [id])
+  orderItems TicketOrderItem[]
+
+  @@index([eventId])
+}
+
+model TicketOrder {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now())
+
+  userId   String?
+  email    String
+  status   String  @default("pending")
+  total    Int
+  currency String
+
+  eventId String
+  event   Event  @relation(fields: [eventId], references: [id])
+
+  items TicketOrderItem[]
+
+  @@index([userId, createdAt])
+  @@index([eventId, createdAt])
+}
+
+model TicketOrderItem {
+  id           String @id @default(cuid())
+  orderId      String
+  ticketTypeId String
+  quantity     Int
+
+  unitPrice Int
+  currency  String
+
+  order      TicketOrder @relation(fields: [orderId], references: [id])
+  ticketType TicketType  @relation(fields: [ticketTypeId], references: [id])
+
+  @@index([orderId])
+  @@index([ticketTypeId])
+}
+
+/**
+ * =========================
+ * Activities
+ * =========================
+ */
+
+model Activity {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  providerId String
+  provider   Provider @relation(fields: [providerId], references: [id])
+
+  slug      String  @unique
+  title     String
+  subtitle  String?
+  city      String
+  country   String? @default("RO")
+  address   String?
+  latitude  Float?
+  longitude Float?
+
+  coverImage String?
+  gallery    String[] @default([])
+
+  category    String? // subcategory inside Activități (ex: "escape_room", "boat_tour")
+  description String?
+
+  priceFrom Int?
+  currency  String? @default("EUR")
+  status    String? @default("pending") // pending | active | rejected | draft
+
+  durationMin Int? // typical duration
+  minPeople   Int?
+  maxPeople   Int?
+
+  isFeatured    Boolean   @default(false)
+  featuredUntil DateTime?
+
+  packages ActivityPackage[]
+  slots    ActivitySlot[]
+  orders   ActivityOrder[]
+
+  @@index([providerId, city, status, createdAt])
+}
+
+model ActivityPackage {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  activityId String
+  activity   Activity @relation(fields: [activityId], references: [id])
+
+  title       String
+  description String?
+  price       Int
+  currency    String  @default("EUR")
+  isPublic    Boolean @default(true)
+  sortOrder   Int     @default(0)
+
+  imageUrl      String?
+  tag           String?
+  durationHours Int?
+  maxPeople     Int?
+  isHighlight   Boolean @default(false)
+
+  // обратная связь с позициями заказов
+  orderItems ActivityOrderItem[]
+
+  @@index([activityId, sortOrder])
+}
+
+model ActivitySlot {
+  id         String   @id @default(cuid())
+  activityId String
+  activity   Activity @relation(fields: [activityId], references: [id])
+
+  startAt DateTime
+  endAt   DateTime
+
+  capacityTotal  Int    @default(1)
+  capacityBooked Int    @default(0)
+  status         String @default("open") // open | closed | sold_out
+
+  note String?
+
+  // обратная связь с заказами
+  orders ActivityOrder[]
+
+  @@index([activityId, startAt])
+  @@index([status, startAt])
+  @@unique([activityId, startAt, endAt], name: "activityId_startAt_endAt")
+
+}
+
+model ActivityOrder {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  userId   String?
+  email    String
+  status   String  @default("pending") // pending | paid | cancelled | failed
+  total    Int
+  currency String  @default("EUR")
+
+  activityId String
+  slotId     String?
+
+  activity Activity      @relation(fields: [activityId], references: [id])
+  slot     ActivitySlot? @relation(fields: [slotId], references: [id])
+
+  items ActivityOrderItem[]
+
+  @@index([userId, createdAt])
+  @@index([activityId, createdAt])
+  @@index([slotId])
+}
+
+model ActivityOrderItem {
+  id                String @id @default(cuid())
+  orderId           String
+  activityPackageId String
+  quantity          Int
+
+  unitPrice Int
+  currency  String
+
+  order           ActivityOrder   @relation(fields: [orderId], references: [id])
+  activityPackage ActivityPackage @relation(fields: [activityPackageId], references: [id])
+
+  @@index([orderId])
+  @@index([activityPackageId])
+}
+
+/**
+ * =========================
+ * Email verification tokens
+ * =========================
+ */
+
+model VerificationToken {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}

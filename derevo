@@ -1,0 +1,134 @@
+bookingart/  — root of the project
+├─ .env                                  (environment variables for local dev)
+├─ .gitignore
+├─ eslint.config.mjs
+├─ next.config.ts                         (Next.js configuration)
+├─ next-env.d.ts                          (Next TypeScript env types)
+├─ next-auth.d.ts                         (project-level next-auth types)
+├─ postcss.config.js
+├─ postcss.config.mjs
+├─ prisma.config.ts
+├─ tailwind.config.ts
+├─ tsconfig.json
+├─ package.json                           (npm scripts + deps)
+├─ package-lock.json
+├─ README.md
+├─ rating.html
+├─ server.js                              (helper server/PM2 entry; optional)
+
+├─ prisma/                                (Prisma schema, local dev DB and migrations)
+│  ├─ dev.db                              (SQLite dev DB - used locally)
+│  ├─ schema.prisma                       (DB schema for Users, Providers, Events, Tickets, etc.)
+│  ├─ seed.js                             (seed script)
+│  ├─ seed.mjs                            (alternate seed script)
+│  └─ migrations/                         (generated migration SQL folders)
+│     ├─ 20251031162817_init_postgres/
+│     ├─ 20251101130305_add_leads_back_relations/
+│     ├─ 20251101221406_add_events/
+│     ├─ 20251102013250_add_user_email_verified/
+│     ├─ 20251104022335_drop_user_email_unique/
+│     ├─ 20251104171742_add_password_to_user/
+│     ├─ 20251105091858_add_user_profile_fields/
+│     └─ 20251105101741_add_provider_profile_fields/
+
+├─ public/                                (static assets served by Next.js)
+│  ├─ images/hero/                        (hero images used on landing pages)
+│  │  ├─ dj.jpg
+│  │  ├─ crowd.jpg
+│  │  ├─ wedding.jpg
+│  │  └─ ...
+│  ├─ uploads/                            (uploaded files)
+│  ├─ vercel.svg, next.svg, window.svg, file.svg, globe.svg, favicon.ico
+│  └─ (other static icons / images)
+
+└─ src/                                   (application source)
+   ├─ app/                                (Next.js App Router pages & API routes)
+   │  ├─ (site)/                           (marketing pages/layout, optional)
+   │  │  ├─ layout.tsx
+   │  │  └─ page.tsx
+   │  
+   │  ├─ page.tsx                          (main landing / localized page)
+   │  ├─ layout.tsx
+   │  ├─ globals.css                       (global styles)
+   │  ├─ tailwind.config.js                (per-app tailwind config)
+   │  ├─ favicon.ico
+   │  
+   │  ├─ api/                              (server route handlers — Next route.ts files)
+   │  │  ├─ auth/
+   │  │  │  ├─ login/route.ts
+   │  │  │  └─ logout/route.ts
+   │  │  ├─ upload/route.ts
+   │  │  ├─ health/route.ts
+   │  │  ├─ book/route.ts
+   │  │  ├─ bookings/[id]/route.ts
+   │  │  ├─ checkout/route.ts
+   │  │  ├─ chat/
+   │  │  │  ├─ messages/route.ts
+   │  │  │  ├─ conversations/route.ts
+   │  │  │  └─ context/route.ts
+   │  │  ├─ events/
+   │  │  │  ├─ [eventId]/route.ts
+   │  │  │  └─ [eventId]/tickets/route.ts
+   │  │  ├─ provider/
+   │  │  │  ├─ packages/route.ts
+   │  │  │  ├─ calendar/route.ts
+   │  │  │  └─ register/route.ts
+   │  │  ├─ admin/
+   │  │  │  ├─ availability/[id]/route.ts   (admin availability endpoints)
+   │  │  │  └─ events/[eventId]/tickets/route.ts
+   │  │  ├─ leads/route.ts and leads/[id]/status/route.ts
+   │  │  └─ settings/ (account, provider, security route handlers)
+   │  
+   │  ├─ admin/                             (admin UI pages)
+   │  │  ├─ page.tsx
+   │  │  ├─ login/page.tsx
+   │  │  ├─ providers/                       (admin provider management)
+   │  │  └─ events/                          (admin events management)
+   │  
+   │  ├─ providers/                         (public provider listing & profile pages)
+   │  │  ├─ page.tsx                         (listing)
+   │  │  ├─ [id]/page.tsx                    (private provider profile by id)
+   │  │  ├─ new/page.tsx                     (provider onboarding)
+   │  │  └─ request/page.tsx
+   │  
+   │  ├─ p/[slug]/                          (public provider pages — by slug)
+   │  │  ├─ page.tsx                        (public provider profile — used on SEO)
+   │  │  └─ PublicProviderCalendar.tsx      (calendar UI for public page)
+   │  
+   │  ├─ events/                            (events listing and detail pages)
+   │  │  ├─ page.tsx
+   │  │  ├─ [slug]/page.tsx
+   │  │  ├─ new/page.tsx
+   │  │  └─ mine/page.tsx
+   │  
+   │  ├─ providers/[id]/BookForm.tsx        (booking form embedded in provider profile)
+   │  ├─ bookings/                           (bookings UI)
+   │  │  └─ new/NewBookingForm.tsx
+   │  ├─ search/page.tsx
+   │  ├─ profile/                            (user profile & overview pages)
+   │  │  ├─ page.tsx
+   │  │  └─ overview/page.tsx
+   │  ├─ tickets/                            (tickets listing & success pages)
+   │  ├─ chat/page.tsx and client components
+   │  └─ many other feature pages (leads, onboarding, availability, venues, etc.)
+
+   ├─ components/                           (reusable React components)
+   │  ├─ home/                              (Hero, CategoryGrid, EventCard, VenuesCarousel)
+   │  ├─ admin/                             (LeadStatusBadge, Ticket editors)
+   │  ├─ chat/                              (ChatWindow, MessagesClient)
+   │  ├─ events/                            (EventForm, TicketCheckoutForm)
+   │  ├─ artist/                            (AvailabilityCalendar)
+   │  └─ venue/                             (FeatureCard, MiniAvailability)
+
+   ├─ lib/                                  (server-side helpers and clients)
+   │  ├─ prisma.ts                          (Prisma client wrapper)
+   │  ├─ auth.ts                            (auth helpers / guards)
+   │  ├─ session.ts                         (session helpers)
+   │  ├─ slugify.ts                         (generate URL slugs)
+   │  ├─ stripe.ts                          (stripe helper / integration)
+   │  └─ validators.ts                      (input validation helpers)
+
+   ├─ types/                                (project-wide TypeScript types)
+   │  └─ next-auth.d.ts
+
+   └─ auth.ts                               (entrypoint to auth wiring)
