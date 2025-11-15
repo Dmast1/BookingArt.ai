@@ -21,10 +21,13 @@ const RATE_LIMIT_PATHS = new Set<string>([
 const PUBLIC_PREFIXES = [
   "/auth",
   "/_next",
-  "/images",
+  "/images",     // файлы из public/images/*
+  "/media",      // файлы из public/media/*  ← ДОБАВИЛИ
+  "/logo",       // /logo.png                ← ДОБАВИЛИ
   "/favicon.ico",
   "/robots.txt",
 ];
+
 
 export function middleware(req: NextRequest) {
   const path = req.nextUrl.pathname;
